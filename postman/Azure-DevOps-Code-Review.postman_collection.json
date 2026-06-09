@@ -1,0 +1,206 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Azure DevOps Code Review",
+    "description": "Postman collection for the devops-code-review FastAPI service.\n\nTriggers automated PR reviews via Celery/Redis and posts comments to Azure DevOps.\n\nImport `Local.postman_environment.json` and select the **Local** environment before sending requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8090",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "repoName",
+      "value": "my-service",
+      "type": "string"
+    },
+    {
+      "key": "prId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "project",
+      "value": "your-project",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Returns service health status."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has ok status', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Review",
+      "item": [
+        {
+          "name": "Trigger PR Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"repo_name\": \"{{repoName}}\",\n  \"pr_id\": {{prId}},\n  \"project\": \"{{project}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["review"]
+            },
+            "description": "Queues a background PR review.\n\nRequired fields:\n- `repo_name`: Azure DevOps repository name\n- `pr_id`: Pull request ID\n\nOptional:\n- `project`: Azure DevOps project (defaults to AZURE_DEVOPS_PROJECT in .env if omitted)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 202', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test('Response contains task_id', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.task_id).to.be.a('string').and.not.empty;",
+                  "    pm.expect(json.status).to.eql('queued');",
+                  "    pm.environment.set('taskId', json.task_id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trigger PR Review (minimal body)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"repo_name\": \"{{repoName}}\",\n  \"pr_id\": {{prId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["review"]
+            },
+            "description": "Queues a review using only repo_name and pr_id. Project is taken from server .env."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 202', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.task_id) {",
+                  "    pm.environment.set('taskId', json.task_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Review Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/review/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["review", "{{taskId}}"]
+            },
+            "description": "Poll review task status.\n\nUses `taskId` environment variable (set automatically by Trigger PR Review).\n\nPossible statuses: pending, in_progress, completed, failed"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has task_id and status', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.task_id).to.be.a('string').and.not.empty;",
+                  "    pm.expect(json.status).to.be.oneOf(['pending', 'in_progress', 'completed', 'failed']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
