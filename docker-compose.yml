@@ -34,7 +34,7 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
     ports:
-      - "8081:8080"
+      - "8082:8080"
     volumes:
       - ./keycloak/plyrev-realm.json:/opt/keycloak/data/import/plyrev-realm.json:ro
     depends_on:
