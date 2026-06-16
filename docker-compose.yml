@@ -2,16 +2,16 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
-      POSTGRES_DB: code_review
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-code_review}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./docker/postgres/init-keycloak-db.sh:/docker-entrypoint-initdb.d/init-keycloak-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d code_review"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-code_review}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -20,15 +20,15 @@ services:
     image: quay.io/keycloak/keycloak:26.0
     command: start-dev --import-realm --http-host=0.0.0.0
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: app
-      KC_DB_PASSWORD: app
+      KC_DB_USERNAME: ${POSTGRES_USER:-app}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-app}
       KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME: http://localhost:8081
-      KC_HOSTNAME_ADMIN: http://localhost:8081
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}
+      KC_HOSTNAME_ADMIN: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_HEALTH_ENABLED: "true"
@@ -63,12 +63,12 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
-      DATABASE_URL: postgresql+psycopg://app:app@postgres:5432/code_review
-      KEYCLOAK_ENABLED: "true"
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@postgres:5432/${POSTGRES_DB:-code_review}
+      KEYCLOAK_ENABLED: ${KEYCLOAK_ENABLED:-true}
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080
-      KEYCLOAK_PUBLIC_URL: http://localhost:8081
-      KEYCLOAK_REALM: plyrev
-      KEYCLOAK_CLIENT_ID: plyrev-web
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8081}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-plyrev}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-plyrev-web}
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,7 +89,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
-      DATABASE_URL: postgresql+psycopg://app:app@postgres:5432/code_review
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@postgres:5432/${POSTGRES_DB:-code_review}
     depends_on:
       postgres:
         condition: service_healthy
