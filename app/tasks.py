@@ -3,24 +3,49 @@ from __future__ import annotations
 import traceback
 
 from app.celery_app import celery_app
-from app.config import get_settings
-from app.services.azure_devops import AzureDevOpsClient
+from app.git_connections_store import get_git_connection_runtime
+from app.review_jobs_store import (
+    mark_job_completed,
+    mark_job_failed,
+    mark_job_in_progress,
+    mark_job_step,
+)
+from app.settings_store import get_runtime_settings
 from app.services.comment_resolver import CommentResolver
 from app.services.email import send_review_notification
+from app.services.git.factory import create_git_client
 from app.services.reviewer import CodeReviewer
 
 
 @celery_app.task(bind=True, name="app.tasks.review_pull_request")
-def review_pull_request(self, repo_name: str, pr_id: int, project: str | None = None) -> dict:
-    settings = get_settings()
-    project_name = project or settings.azure_devops_project
+def review_pull_request(
+    self,
+    git_connection_id: int,
+    repo_name: str,
+    pr_id: int,
+    project: str | None = None,
+) -> dict:
+    task_id = self.request.id
+    mark_job_in_progress(task_id)
+    settings = get_runtime_settings()
+    missing = list(settings.missing_fields())
+    if missing:
+        mark_job_failed(
+            task_id,
+            "Review settings are incomplete. Configure: " + ", ".join(missing),
+        )
+        raise ValueError(
+            "Review settings are incomplete. Configure: " + ", ".join(missing)
+        )
 
-    client = AzureDevOpsClient(
-        base_url=settings.azure_devops_base_url,
-        org=settings.azure_devops_org,
-        project=project_name,
-        pat=settings.azure_devops_pat,
-    )
+    connection = get_git_connection_runtime(git_connection_id)
+    if connection is None:
+        mark_job_failed(task_id, "Git platform not found.")
+        raise ValueError("Git platform not found.")
+
+    project_name = (project or "").strip() or None
+    client = create_git_client(settings, project=project_name, connection=connection)
+
     reviewer = CodeReviewer(
         api_key=settings.openai_api_key,
         base_url=settings.openai_base_url,
@@ -39,34 +64,39 @@ def review_pull_request(self, repo_name: str, pr_id: int, project: str | None = 
     )
 
     reviewer_user_id, recipient_email = client.get_authenticated_user()
-    pr_url = (
-        f"{settings.azure_devops_base_url}/{settings.azure_devops_org}/"
-        f"{project_name.replace(' ', '%20')}/_git/{repo_name}/pullrequest/{pr_id}"
-    )
+    pr = client.get_pull_request(repo_name, pr_id, project=project_name or None)
+    pr_url = pr.web_url or client.build_pr_url(repo_name, pr_id, project=project_name or None)
 
     try:
         self.update_state(state="PROGRESS", meta={"step": "fetching_pr"})
-        pr = client.get_pull_request(repo_name, pr_id)
-        file_diffs = client.get_file_diffs(repo_name, pr)
+        mark_job_step(task_id, "fetching_pr")
+        file_diffs = client.get_file_diffs(repo_name, pr, project=project_name or None)
 
         self.update_state(state="PROGRESS", meta={"step": "resolving_comments"})
-        active_threads = client.list_active_reviewer_threads(repo_name, pr_id, reviewer_user_id)
+        mark_job_step(task_id, "resolving_comments")
+        active_threads = client.list_active_reviewer_threads(
+            repo_name, pr_id, reviewer_user_id, project=project_name or None
+        )
         thread_ids_to_resolve = comment_resolver.threads_to_resolve(pr, file_diffs, active_threads)
         resolved_thread_ids: list[int] = []
         for thread_id in thread_ids_to_resolve:
             try:
-                client.resolve_thread(repo_name, pr_id, thread_id)
+                client.resolve_thread(repo_name, pr_id, thread_id, project=project_name or None)
                 resolved_thread_ids.append(thread_id)
             except Exception:
                 continue
 
         self.update_state(state="PROGRESS", meta={"step": "reviewing"})
+        mark_job_step(task_id, "reviewing")
         review = reviewer.review(pr, file_diffs)
 
         self.update_state(state="PROGRESS", meta={"step": "posting_comments"})
+        mark_job_step(task_id, "posting_comments")
         summary_thread_id: int | None = None
         if review.summary:
-            summary_thread_id = client.post_summary_comment(repo_name, pr_id, review.summary)
+            summary_thread_id = client.post_summary_comment(
+                repo_name, pr_id, review.summary, project=project_name or None
+            )
         inline_thread_ids: list[int] = []
         for comment in review.inline_comments:
             thread_id = client.post_inline_comment(
@@ -79,6 +109,7 @@ def review_pull_request(self, repo_name: str, pr_id: int, project: str | None = 
                 iteration_id=comment.iteration_id,
                 offset_start=comment.offset_start,
                 offset_end=comment.offset_end,
+                project=project_name or None,
             )
             inline_thread_ids.append(thread_id)
 
@@ -86,6 +117,7 @@ def review_pull_request(self, repo_name: str, pr_id: int, project: str | None = 
             "repo_name": repo_name,
             "pr_id": pr_id,
             "project": project_name,
+            "git_platform": connection.git_platform,
             "title": pr.title,
             "linked_work_items": [
                 {
@@ -110,6 +142,7 @@ def review_pull_request(self, repo_name: str, pr_id: int, project: str | None = 
         }
 
         self.update_state(state="PROGRESS", meta={"step": "sending_email"})
+        mark_job_step(task_id, "sending_email")
         try:
             send_review_notification(
                 gmail_user=settings.gmail_user,
@@ -126,10 +159,12 @@ def review_pull_request(self, repo_name: str, pr_id: int, project: str | None = 
                 f"{type(email_exc).__name__}: {email_exc}. "
                 "Review comments were still posted to the PR."
             )
+        mark_job_completed(task_id, result)
         return result
 
     except Exception as exc:
         error_message = f"{type(exc).__name__}: {exc}"
+        mark_job_failed(task_id, error_message)
         try:
             send_review_notification(
                 gmail_user=settings.gmail_user,
@@ -181,6 +216,7 @@ def _build_email_text(result: dict) -> str:
 
     return (
         f"PR review completed.\n\n"
+        f"Platform: {result.get('git_platform', 'unknown')}\n"
         f"Repository: {result['repo_name']}\n"
         f"PR: #{result['pr_id']}\n"
         f"Title: {result['title']}\n"
@@ -217,6 +253,7 @@ def _build_email_html(result: dict) -> str:
       <body>
         <h2>PR review completed</h2>
         <ul>
+          <li><strong>Platform:</strong> {result.get('git_platform', 'unknown')}</li>
           <li><strong>Repository:</strong> {result['repo_name']}</li>
           <li><strong>PR:</strong> #{result['pr_id']}</li>
           <li><strong>Title:</strong> {result['title']}</li>

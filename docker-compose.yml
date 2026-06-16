@@ -1,4 +1,52 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: code_review
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-keycloak-db.sh:/docker-entrypoint-initdb.d/init-keycloak-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d code_review"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: start-dev --import-realm --http-host=0.0.0.0
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: app
+      KC_DB_PASSWORD: app
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: http://localhost:8081
+      KC_HOSTNAME_ADMIN: http://localhost:8081
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./keycloak/plyrev-realm.json:/opt/keycloak/data/import/plyrev-realm.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e 'GET /realms/plyrev HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '200\\|302' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
+
   redis:
     image: redis:7-alpine
     ports:
@@ -15,10 +63,22 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DATABASE_URL: postgresql+psycopg://app:app@postgres:5432/code_review
+      KEYCLOAK_ENABLED: "true"
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8081
+      KEYCLOAK_REALM: plyrev
+      KEYCLOAK_CLIENT_ID: plyrev-web
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      redis:
+        condition: service_started
     volumes:
       - .:/app
+      - app_data:/app/data
 
   worker:
     build: .
@@ -29,7 +89,16 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DATABASE_URL: postgresql+psycopg://app:app@postgres:5432/code_review
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       - .:/app
+      - app_data:/app/data
+
+volumes:
+  app_data:
+  pg_data:

@@ -1,8 +1,8 @@
 from celery import Celery
 
-from app.config import get_settings
+from app.config import get_infrastructure_settings
 
-settings = get_settings()
+settings = get_infrastructure_settings()
 
 celery_app = Celery(
     "devops_code_review",

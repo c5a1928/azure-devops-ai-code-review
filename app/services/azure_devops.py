@@ -8,7 +8,6 @@ import logging
 import re
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass, field
 from urllib.error import HTTPError, URLError
 
 from app.services.line_mapping import parse_new_file_changed_lines
@@ -16,45 +15,7 @@ from app.services.line_mapping import parse_new_file_changed_lines
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class FileDiff:
-    path: str
-    change_tracking_id: int
-    diff: str
-    new_content: str
-    iteration_id: int = 1
-    changed_lines: set[int] = field(default_factory=set)
-
-
-@dataclass
-class ReviewThread:
-    thread_id: int
-    content: str
-    file_path: str | None
-    line: int | None
-    status: str
-
-
-@dataclass
-class WorkItemContext:
-    id: int
-    title: str
-    work_item_type: str
-    state: str
-    description: str
-    acceptance_criteria: str
-
-
-@dataclass
-class PullRequestContext:
-    pr_id: int
-    title: str
-    description: str
-    source_commit: str
-    target_commit: str
-    repository_id: str
-    web_url: str
-    work_items: list[WorkItemContext] = field(default_factory=list)
+from app.services.git.types import FileDiff, PullRequestContext, ReviewThread, WorkItemContext
 
 
 class AzureDevOpsAPIError(RuntimeError):

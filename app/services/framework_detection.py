@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.services.azure_devops import FileDiff
+from app.services.git.types import FileDiff
 
 
 @dataclass(frozen=True)

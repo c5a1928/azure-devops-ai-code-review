@@ -5,7 +5,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 
-from app.services.azure_devops import FileDiff, PullRequestContext
+from app.services.git.types import FileDiff, PullRequestContext
 from app.services.framework_detection import build_framework_review_section
 from app.services.openai_chat import call_chat_completion
 from app.services.line_mapping import (

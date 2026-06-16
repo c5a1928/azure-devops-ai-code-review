@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from app.services.azure_devops import FileDiff, PullRequestContext, ReviewThread
+from app.services.git.types import FileDiff, PullRequestContext, ReviewThread
 from app.services.openai_chat import call_chat_completion
 
 logger = logging.getLogger(__name__)

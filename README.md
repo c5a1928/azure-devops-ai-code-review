@@ -1,174 +1,106 @@
-# Azure DevOps AI Code Review
+# PlyRev
 
-Automated pull request reviews for **Azure DevOps** using an OpenAI-compatible LLM. Trigger a review via HTTP; a background worker fetches the PR diff, linked work items, and acceptance criteria, runs a strict senior-engineer-style review, and posts inline comments back to the PR.
+Automated pull request reviews for **Azure DevOps, GitHub, GitLab, and Bitbucket** using an OpenAI-compatible LLM. Configure integrations in a Firebase-style web console, then trigger reviews that post inline comments back to the PR.
+
+**Live UI:** http://localhost:8090 (after `docker compose up`)
 
 ## Features
 
-- **Work-item-aware reviews** — checks changes against linked Azure DevOps work items and acceptance criteria
+- **Firebase-style console** — light sidebar navigation, integration cards, clean forms
+- **Multi-platform git** — Azure DevOps, GitHub, GitLab, Bitbucket (self-hosted URLs supported)
+- **Work-item-aware reviews** — Azure DevOps linked work items and acceptance criteria
 - **Inline comments** — up to 8 anchored comments on changed lines with code snippets
-- **Framework detection** — applies stack-specific checks for FastAPI, Flask, SQLAlchemy, Pydantic, Celery, and Django
-- **Comment resolution** — on re-review, auto-resolves prior reviewer threads when issues are fixed
+- **Framework detection** — FastAPI, Flask, SQLAlchemy, Pydantic, Celery, Django
+- **Comment resolution** — auto-resolves prior threads on Azure DevOps re-reviews
 - **Email notification** — optional Gmail summary when a review completes
-- **Any OpenAI-compatible API** — works with OpenAI, Azure OpenAI, or local proxies via `OPENAI_BASE_URL`
-- **Reasoning models** — supports GPT-5.x with configurable `OPENAI_REASONING_EFFORT`
+- **Reasoning models** — GPT-5.x with configurable `OPENAI_REASONING_EFFORT`
 
-## Architecture
+## Supported git platforms
 
-```
-POST /review  →  FastAPI  →  Celery task  →  Redis
-                                ↓
-                    Azure DevOps API (PR, diffs, work items, comments)
-                                ↓
-                    OpenAI-compatible LLM
-                                ↓
-                    Post comments + email notification
-```
-
-| Service | Role | Default port |
-|---------|------|--------------|
-| `api` | FastAPI HTTP API | 8090 |
-| `worker` | Celery review worker | — |
-| `redis` | Task broker | 6380 (host) |
-
-## Prerequisites
-
-- Docker and Docker Compose
-- Azure DevOps [Personal Access Token](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate) with **Code (Read & Write)** and **Work Items (Read)** scopes
-- OpenAI API key (or compatible endpoint)
-- Gmail app password (optional, for email notifications)
+| Platform | API default | Notes |
+|----------|-------------|-------|
+| Azure DevOps | `https://dev.azure.com` | Work items, thread resolution, full inline anchoring |
+| GitHub | `https://api.github.com` | PR reviews and inline comments |
+| GitLab | `https://gitlab.com/api/v4` | Merge request discussions |
+| Bitbucket | `https://api.bitbucket.org/2.0` | Pull request comments |
 
 ## Quick start
 
-1. **Clone and configure**
+```bash
+git clone git@github.com:c5a1928/azure-devops-ai-code-review.git
+cd azure-devops-ai-code-review
+cp .env.example .env
+docker compose up -d --build
+```
 
-   ```bash
-   git clone git@github.com:c5a1928/azure-devops-ai-code-review.git
-   cd azure-devops-ai-code-review
-   cp .env.example .env
-   # Edit .env with your Azure DevOps and OpenAI credentials
-   ```
+This starts **PostgreSQL**, **Keycloak 26**, Redis, the API, and the Celery worker. Settings are stored in Postgres (`pg_data` volume).
 
-2. **Start services**
+Open http://localhost:8090 and **Sign in** or **Sign up** via Keycloak.
 
-   ```bash
-   docker compose up -d --build
-   ```
+| Service | URL |
+|---------|-----|
+| App | http://localhost:8090 |
+| Keycloak admin | http://localhost:8081 (admin / admin) |
+| Postgres | localhost:5433 |
 
-3. **Trigger a review**
+### Authentication
 
-   ```bash
-   curl -X POST http://localhost:8090/review \
-     -H "Content-Type: application/json" \
-     -d '{"repo_name": "my-service", "pr_id": 42}'
-   ```
+Users sign in through **Keycloak 26** (`plyrev` realm). Registration is enabled on the login screen.
 
-   Response (202):
+Use **http://localhost:8081** for Keycloak (not `127.0.0.1`) — the hostname is configured for `localhost`. Admin console: http://localhost:8081/admin/ (admin / admin).
 
-   ```json
-   {
-     "task_id": "abc-123",
-     "status": "queued",
-     "message": "Review queued for my-service PR #42"
-   }
-   ```
+To disable Keycloak and use the legacy admin password instead:
 
-4. **Poll task status**
+```env
+KEYCLOAK_ENABLED=false
+ADMIN_PASSWORD=your-secret
+```
 
-   ```bash
-   curl http://localhost:8090/review/abc-123
-   ```
+1. **Integrations → Git platform** — pick a provider and save credentials
+2. **Integrations → AI model** — add your LLM API key
+3. **Run review** — enter repository and PR/MR ID
 
-   A Postman collection is included in [`postman/`](postman/).
+## Console sections
 
-## Configuration
-
-Copy [`.env.example`](.env.example) to `.env`. Never commit `.env`.
-
-| Variable | Description |
-|----------|-------------|
-| `AZURE_DEVOPS_ORG` | Organization name (e.g. `contoso`) |
-| `AZURE_DEVOPS_PROJECT` | Default project name |
-| `AZURE_DEVOPS_PAT` | Personal access token |
-| `OPENAI_API_KEY` | API key for the LLM provider |
-| `OPENAI_BASE_URL` | API base URL (default: `https://api.openai.com/v1`) |
-| `OPENAI_MODEL` | Model slug (default: `gpt-5.5`) |
-| `OPENAI_REASONING_EFFORT` | For reasoning models: `none`, `low`, `medium`, `high`, `xhigh` |
-| `OPENAI_MAX_TOKENS` | Max completion tokens including internal reasoning (default: `16384`) |
-| `OPENAI_TEMPERATURE` | Used when `OPENAI_REASONING_EFFORT` is unset |
-| `GMAIL_USER` | Sender address for notifications |
-| `GMAIL_APP_PASSWORD` | [Google app password](https://myaccount.google.com/apppasswords) |
-
-### Model recommendations
-
-| Model | Trade-off |
-|-------|-----------|
-| `gpt-5.5` + `high` | Best review quality; slower and higher cost |
-| `gpt-5.4-mini` | Good balance of speed and quality |
-| `gpt-4o` | Cheaper; less thorough on complex PRs |
-
-LLM usage is billed by your provider. Large PRs with `gpt-5.5` and high reasoning effort can cost noticeably more per review than `gpt-4o-mini`.
+| Page | Purpose |
+|------|---------|
+| Run review | Queue a PR review and watch progress |
+| Git platform | Select Azure DevOps, GitHub, GitLab, or Bitbucket |
+| AI model | OpenAI-compatible LLM settings |
+| Notifications | Optional Gmail completion emails |
 
 ## API
 
-### `GET /health`
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/platforms` | List supported git platforms |
+| `GET` | `/api/settings` | Read configuration |
+| `PUT` | `/api/settings` | Save configuration |
+| `POST` | `/api/review` | Queue a review |
+| `GET` | `/api/review/{task_id}` | Poll status |
 
-Returns `{"status": "ok"}`.
+## Local development
 
-### `POST /review`
+### Backend
 
-Queue a PR review.
-
-**Body:**
-
-```json
-{
-  "repo_name": "my-service",
-  "pr_id": 42,
-  "project": "My Project"
-}
-```
-
-`project` is optional and defaults to `AZURE_DEVOPS_PROJECT`.
-
-### `GET /review/{task_id}`
-
-Returns task status: `pending`, `in_progress`, `completed`, or `failed`.
-
-Completed results include `verdict`, `inline_comment_count`, `linked_work_items`, `detected_frameworks`, `llm_model`, and `review_diagnostics`.
-
-## What the reviewer checks
-
-1. **Functional / logical** — alignment with linked work items and acceptance criteria
-2. **Efficiency** — N+1 queries, wasteful patterns, unnecessary work
-3. **Python 3 / PEP** — on changed `.py` lines
-4. **Framework idioms** — when FastAPI, Flask, SQLAlchemy, Pydantic, Celery, or Django is detected
-
-Reviews are written as plain prose from a strict senior engineer: specific issues, code snippets, impact, and concrete fixes. No compliments, no LGTM-only comments, and no mention of automation.
-
-## Local development (without Docker)
+Requires PostgreSQL. With Docker Compose, Postgres is exposed on `localhost:5433`.
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
-
-# Terminal 1 — Redis (or use docker compose up redis -d)
-redis-server
-
-# Terminal 2 — Celery worker
-celery -A app.celery_app.celery_app worker --loglevel=info
-
-# Terminal 3 — API
+# ensure DATABASE_URL points at Postgres (see .env.example)
 uvicorn app.main:app --reload --port 8090
+celery -A app.celery_app.celery_app worker --loglevel=info
 ```
 
-## Security notes
+### Frontend (Angular)
 
-- Store secrets only in `.env` or your deployment secret manager
-- The PAT is used to post comments as the token owner — use a dedicated service account if possible
-- Rotate credentials if they are ever exposed
-- Review LLM output before treating it as authoritative; it can miss issues or flag false positives
+```bash
+cd frontend
+npm install
+npm run build
+npm start   # :4200 with API proxy
+```
 
 ## License
 

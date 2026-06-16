@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "name": "Azure DevOps Code Review",
-    "description": "Postman collection for the devops-code-review FastAPI service.\n\nTriggers automated PR reviews via Celery/Redis and posts comments to Azure DevOps.\n\nImport `Local.postman_environment.json` and select the **Local** environment before sending requests.",
+    "name": "PlyRev",
+    "description": "Postman collection for the PlyRev FastAPI service.\n\nTriggers automated PR reviews via Celery/Redis and posts comments to git platforms.\n\nImport `Local.postman_environment.json` and select the **Local** environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
