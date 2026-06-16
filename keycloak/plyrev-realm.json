@@ -19,15 +19,17 @@
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
       "protocol": "openid-connect",
-      "rootUrl": "http://localhost:8090",
+      "rootUrl": "https://plyrev.plydot.dev",
       "baseUrl": "/",
       "redirectUris": [
         "http://localhost:8090/*",
-        "http://localhost:4200/*"
+        "http://localhost:4200/*",
+        "https://plyrev.plydot.dev/*"
       ],
       "webOrigins": [
         "http://localhost:8090",
         "http://localhost:4200",
+        "https://plyrev.plydot.dev",
         "+"
       ],
       "attributes": {

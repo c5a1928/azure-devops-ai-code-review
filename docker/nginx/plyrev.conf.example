@@ -1,0 +1,70 @@
+# Nginx reverse proxy for PlyRev (example: plyrev.plydot.dev)
+#
+# 1. Copy to /etc/nginx/sites-available/plyrev and symlink into sites-enabled.
+# 2. Set SSL paths (certbot recommended).
+# 3. Ensure Docker publishes api/keycloak on 127.0.0.1 only (docker-compose.prod.yml).
+# 4. Update keycloak/plyrev-realm.json redirectUris / webOrigins for your domains.
+# 5. Set in .env:
+#      APP_PUBLIC_URL=https://plyrev.plydot.dev
+#      KEYCLOAK_PUBLIC_URL=https://auth.plydot.dev
+#    (or use a path-based Keycloak proxy — subdomain is simpler.)
+
+# --- PlyRev app ---
+server {
+    listen 80;
+    listen [::]:80;
+    server_name plyrev.plydot.dev;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name plyrev.plydot.dev;
+
+    # certbot --nginx -d plyrev.plydot.dev
+    ssl_certificate     /etc/letsencrypt/live/plyrev.plydot.dev/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/plyrev.plydot.dev/privkey.pem;
+
+    client_max_body_size 10m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+}
+
+# --- Keycloak (auth subdomain) ---
+server {
+    listen 80;
+    listen [::]:80;
+    server_name auth.plydot.dev;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name auth.plydot.dev;
+
+    ssl_certificate     /etc/letsencrypt/live/auth.plydot.dev/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/auth.plydot.dev/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+    }
+}

@@ -43,6 +43,34 @@ Open http://localhost:8090 and **Sign in** or **Sign up** via Keycloak.
 | Keycloak admin | http://localhost:8081 (admin / admin) |
 | Postgres | localhost:5433 |
 
+## Production deployment (nginx + HTTPS)
+
+The Docker image builds the Angular UI into `app/static`. **Do not mount the whole repo over `/app`** on the server — that removes the built UI and every route returns 404.
+
+```bash
+cp .env.example .env
+# Edit .env: APP_PUBLIC_URL, KEYCLOAK_PUBLIC_URL, secrets, OPENAI_API_KEY
+
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+`docker-compose.prod.yml` binds api/keycloak to `127.0.0.1` only and skips dev volume mounts. Requires Docker Compose 2.24+ (`!override`).
+
+Verify the UI is present:
+
+```bash
+curl -s http://127.0.0.1:8090/health
+# {"status":"ok","frontend_built":true}
+```
+
+Nginx example for `plyrev.plydot.dev` → `:8090` and `auth.plydot.dev` → Keycloak `:8081`: see [docker/nginx/plyrev.conf.example](docker/nginx/plyrev.conf.example).
+
+Update [keycloak/plyrev-realm.json](keycloak/plyrev-realm.json) `redirectUris` / `webOrigins` for your domain, then recreate Keycloak if the realm was already imported:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate keycloak
+```
+
 ### Authentication
 
 Users sign in through **Keycloak 26** (`plyrev` realm). Registration is enabled on the login screen.

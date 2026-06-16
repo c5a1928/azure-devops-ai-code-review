@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.api.jobs import router as jobs_router
 from app.api.git_connections import router as git_connections_router
@@ -12,6 +13,8 @@ from app.api.git_projects import router as git_projects_router
 from app.api.reviews import router as reviews_router
 from app.api.settings import router as settings_router
 from app.settings_store import bootstrap_settings
+
+logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -45,13 +48,36 @@ app.include_router(git_projects_router)
 app.include_router(reviews_router)
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
-
-
 frontend_dir = _frontend_dir()
-if frontend_dir is not None:
+
+
+@app.get("/health")
+def health() -> dict[str, str | bool]:
+    return {
+        "status": "ok",
+        "frontend_built": frontend_dir is not None,
+    }
+
+
+if frontend_dir is None:
+    logger.warning(
+        "Frontend static files missing under %s — UI routes are disabled. "
+        "For production use: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build",
+        STATIC_DIR,
+    )
+
+    @app.get("/")
+    async def frontend_missing() -> JSONResponse:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": (
+                    "Frontend not built or app/static was overwritten by a volume mount. "
+                    "Rebuild the image and deploy with docker-compose.prod.yml."
+                ),
+            },
+        )
+elif frontend_dir is not None:
     index_file = frontend_dir / "index.html"
 
     @app.get("/{full_path:path}")

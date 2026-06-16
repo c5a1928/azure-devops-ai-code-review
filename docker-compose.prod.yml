@@ -1,0 +1,31 @@
+# Production overlay — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Does not mount source over the image (keeps built Angular assets in app/static).
+
+services:
+  postgres:
+    ports: !override []
+
+  redis:
+    ports: !override []
+
+  keycloak:
+    ports: !override
+      - "127.0.0.1:8081:8080"
+
+  api:
+    command: >-
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8090
+      --proxy-headers
+      --forwarded-allow-ips=*
+    ports: !override
+      - "127.0.0.1:8090:8090"
+    volumes: !override
+      - app_data:/app/data
+
+  worker:
+    volumes: !override
+      - app_data:/app/data

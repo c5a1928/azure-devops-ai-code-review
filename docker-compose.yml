@@ -77,7 +77,7 @@ services:
       redis:
         condition: service_started
     volumes:
-      - .:/app
+      - ./app:/app/app
       - app_data:/app/data
 
   worker:
@@ -96,7 +96,7 @@ services:
       redis:
         condition: service_started
     volumes:
-      - .:/app
+      - ./app:/app/app
       - app_data:/app/data
 
 volumes:
