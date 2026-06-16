@@ -29,7 +29,7 @@ class AzureDevOpsPlatformClient(GitPlatformClient):
     ) -> list:
         return self._client.list_active_reviewer_threads(repo_name, pr_id, reviewer_user_id)
 
-    def resolve_thread(self, repo_name: str, pr_id: int, thread_id: int, project: str | None = None) -> None:
+    def resolve_thread(self, repo_name: str, pr_id: int, thread_id: int | str, project: str | None = None) -> None:
         self._client.resolve_thread(repo_name, pr_id, thread_id)
 
     def post_summary_comment(self, repo_name: str, pr_id: int, content: str, project: str | None = None) -> int:

@@ -102,7 +102,7 @@ class GitHubClient(GitPlatformClient):
         return []
 
     def resolve_thread(
-        self, repo_name: str, pr_id: int, thread_id: int, project: str | None = None
+        self, repo_name: str, pr_id: int, thread_id: int | str, project: str | None = None
     ) -> None:
         return None
 

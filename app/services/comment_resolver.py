@@ -31,7 +31,7 @@ class CommentResolver:
         pr: PullRequestContext,
         file_diffs: list[FileDiff],
         active_threads: list[ReviewThread],
-    ) -> list[int]:
+    ) -> list[int | str]:
         if not active_threads:
             return []
 
@@ -73,7 +73,7 @@ Current PR diffs:
 
 Return ONLY valid JSON:
 {{
-  "resolve_thread_ids": [123, 456]
+  "resolve_thread_ids": [123, "abc123def"]
 }}
 
 Rules:
@@ -105,15 +105,20 @@ Rules:
             reasoning_effort=self.reasoning_effort,
         )
 
-    def _parse_response(self, raw: str, active_threads: list[ReviewThread]) -> list[int]:
+    def _parse_response(self, raw: str, active_threads: list[ReviewThread]) -> list[int | str]:
         text = raw.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
         payload = json.loads(text)
         valid_ids = {thread.thread_id for thread in active_threads}
-        resolved: list[int] = []
+        resolved: list[int | str] = []
         for thread_id in payload.get("resolve_thread_ids", []):
+            if isinstance(thread_id, str):
+                normalized = thread_id.strip()
+                if normalized in valid_ids:
+                    resolved.append(normalized)
+                continue
             try:
                 numeric_id = int(thread_id)
             except (TypeError, ValueError):

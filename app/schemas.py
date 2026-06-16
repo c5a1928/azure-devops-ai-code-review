@@ -38,6 +38,7 @@ class ReviewJobPublic(BaseModel):
     created_at: datetime
     updated_at: datetime
     completed_at: datetime | None = None
+    archived_at: datetime | None = None
 
 
 class AuthLoginRequest(BaseModel):

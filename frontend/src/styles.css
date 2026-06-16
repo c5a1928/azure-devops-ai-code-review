@@ -571,6 +571,37 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.row-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.jobs-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fb-text-secondary);
+  font-size: 0.9rem;
+}
+
+.status-pill.archived {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--fb-text-secondary);
+}
+
+button.secondary.danger {
+  color: var(--fb-danger, #c62828);
+}
+
 .project-form {
   margin-top: 1rem;
   padding-top: 0.5rem;

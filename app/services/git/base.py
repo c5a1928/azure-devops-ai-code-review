@@ -35,7 +35,7 @@ class GitPlatformClient(ABC):
         self,
         repo_name: str,
         pr_id: int,
-        thread_id: int,
+        thread_id: int | str,
         project: str | None = None,
     ) -> None:
         ...

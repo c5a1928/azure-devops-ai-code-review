@@ -15,7 +15,7 @@ class FileDiff:
 
 @dataclass
 class ReviewThread:
-    thread_id: int
+    thread_id: int | str
     content: str
     file_path: str | None
     line: int | None
@@ -42,6 +42,7 @@ class PullRequestContext:
     repository_id: str
     web_url: str
     work_items: list[WorkItemContext] = field(default_factory=list)
+    start_commit: str = ""
 
 
 GIT_PLATFORMS = frozenset({"azure_devops", "github", "gitlab", "bitbucket"})

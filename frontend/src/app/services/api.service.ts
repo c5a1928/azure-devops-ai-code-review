@@ -100,12 +100,25 @@ export class ApiService {
     return this.request<void>('DELETE', `/api/git-projects/${id}`);
   }
 
-  listJobs(): Promise<ReviewJob[]> {
-    return this.request<ReviewJob[]>('GET', '/api/jobs');
+  listJobs(includeArchived = false): Promise<ReviewJob[]> {
+    const query = includeArchived ? '?include_archived=true' : '';
+    return this.request<ReviewJob[]>('GET', `/api/jobs${query}`);
   }
 
   getJob(taskId: string): Promise<ReviewJob> {
     return this.request<ReviewJob>('GET', `/api/jobs/${taskId}`);
+  }
+
+  archiveJob(taskId: string): Promise<ReviewJob> {
+    return this.request<ReviewJob>('POST', `/api/jobs/${taskId}/archive`);
+  }
+
+  unarchiveJob(taskId: string): Promise<ReviewJob> {
+    return this.request<ReviewJob>('POST', `/api/jobs/${taskId}/unarchive`);
+  }
+
+  deleteJob(taskId: string): Promise<void> {
+    return this.request<void>('DELETE', `/api/jobs/${taskId}`);
   }
 
   startReview(payload: { pr_id: number; git_project_id: number }): Promise<{

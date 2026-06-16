@@ -52,22 +52,27 @@ import {
                     {{ project.git_connection_label || project.platform }} · {{ project.display_path }}
                   </span>
                 </div>
-                <button
-                  class="secondary"
-                  type="button"
-                  [disabled]="deletingProjectId === project.id"
-                  (click)="removeProject(project)"
-                >
-                  {{ deletingProjectId === project.id ? 'Removing...' : 'Remove' }}
-                </button>
+                <div class="row-actions">
+                  <button class="secondary" type="button" (click)="startEditProject(project)">
+                    Edit
+                  </button>
+                  <button
+                    class="secondary"
+                    type="button"
+                    [disabled]="deletingProjectId === project.id"
+                    (click)="removeProject(project)"
+                  >
+                    {{ deletingProjectId === project.id ? 'Removing...' : 'Remove' }}
+                  </button>
+                </div>
               </div>
             }
           </div>
         }
 
         @if (connections.length > 0) {
-          <form class="project-form" (ngSubmit)="addProject()">
-            <div class="section-title">Add project</div>
+          <form class="project-form" (ngSubmit)="saveProject()">
+            <div class="section-title">{{ editingProjectId ? 'Edit project' : 'Add project' }}</div>
             <div class="grid-2">
               <div class="field">
                 <label for="gitConnection">Git platform</label>
@@ -145,12 +150,25 @@ import {
               </div>
             </div>
             <div class="actions">
+              @if (editingProjectId) {
+                <button class="secondary" type="button" [disabled]="savingProject" (click)="cancelEditProject()">
+                  Cancel
+                </button>
+              }
               <button
                 class="primary"
                 type="submit"
-                [disabled]="addingProject || !newProject.git_connection_id"
+                [disabled]="savingProject || !newProject.git_connection_id"
               >
-                {{ addingProject ? 'Adding...' : 'Add project' }}
+                {{
+                  savingProject
+                    ? editingProjectId
+                      ? 'Saving...'
+                      : 'Adding...'
+                    : editingProjectId
+                      ? 'Save changes'
+                      : 'Add project'
+                }}
               </button>
             </div>
           </form>
@@ -170,8 +188,9 @@ export class ProjectsPageComponent implements OnInit {
     repo: '',
   };
   loading = true;
-  addingProject = false;
+  savingProject = false;
   deletingProjectId: number | null = null;
+  editingProjectId: number | null = null;
   error = '';
   message = '';
 
@@ -228,36 +247,71 @@ export class ProjectsPageComponent implements OnInit {
     this.newProject.repo = '';
   }
 
-  async addProject(): Promise<void> {
+  async saveProject(): Promise<void> {
     if (!this.auth.requireAuthForAction(this.router.url)) {
       return;
     }
     if (!this.newProject.git_connection_id) {
       return;
     }
-    this.addingProject = true;
+    this.savingProject = true;
     this.error = '';
     this.message = '';
     try {
-      const created = await this.api.createGitProject({
+      const payload: GitProjectInput = {
         git_connection_id: this.newProject.git_connection_id,
         label: this.newProject.label.trim(),
         project: this.newProject.project.trim(),
         repo: this.newProject.repo.trim(),
-      });
-      this.projects = [...this.projects, created];
-      this.newProject = {
-        git_connection_id: this.newProject.git_connection_id,
-        label: '',
-        project: '',
-        repo: '',
       };
-      this.message = 'Project added.';
+      if (this.editingProjectId) {
+        const updated = await this.api.updateGitProject(this.editingProjectId, payload);
+        this.projects = this.projects.map((item) => (item.id === updated.id ? updated : item));
+        this.cancelEditProject();
+        this.message = 'Project updated.';
+      } else {
+        const created = await this.api.createGitProject(payload);
+        this.projects = [...this.projects, created];
+        this.resetNewProjectForm();
+        this.message = 'Project added.';
+      }
     } catch (err) {
-      this.error = err instanceof Error ? err.message : 'Failed to add project';
+      this.error =
+        err instanceof Error
+          ? err.message
+          : this.editingProjectId
+            ? 'Failed to update project'
+            : 'Failed to add project';
     } finally {
-      this.addingProject = false;
+      this.savingProject = false;
     }
+  }
+
+  startEditProject(project: GitProject): void {
+    this.editingProjectId = project.id;
+    this.newProject = {
+      git_connection_id: project.git_connection_id,
+      label: project.label,
+      project: project.project,
+      repo: project.repo,
+    };
+    this.error = '';
+    this.message = '';
+  }
+
+  cancelEditProject(): void {
+    this.editingProjectId = null;
+    this.resetNewProjectForm();
+    this.error = '';
+  }
+
+  private resetNewProjectForm(): void {
+    this.newProject = {
+      git_connection_id: this.connections.length === 1 ? this.connections[0].id : 0,
+      label: '',
+      project: '',
+      repo: '',
+    };
   }
 
   async removeProject(project: GitProject): Promise<void> {

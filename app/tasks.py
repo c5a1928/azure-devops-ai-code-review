@@ -78,7 +78,7 @@ def review_pull_request(
             repo_name, pr_id, reviewer_user_id, project=project_name or None
         )
         thread_ids_to_resolve = comment_resolver.threads_to_resolve(pr, file_diffs, active_threads)
-        resolved_thread_ids: list[int] = []
+        resolved_thread_ids: list[int | str] = []
         for thread_id in thread_ids_to_resolve:
             try:
                 client.resolve_thread(repo_name, pr_id, thread_id, project=project_name or None)

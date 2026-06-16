@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from sqlalchemy import inspect, text
+
 from celery.result import AsyncResult
 
 from app.celery_app import celery_app
-from app.db import db_session, init_db
+from app.db import db_session, get_engine, init_db
 from app.models import ReviewJobRecord
 from app.schemas import ReviewJobPublic
 
@@ -31,6 +33,7 @@ def _record_to_public(record: ReviewJobRecord) -> ReviewJobPublic:
         created_at=record.created_at,
         updated_at=record.updated_at,
         completed_at=record.completed_at,
+        archived_at=record.archived_at,
     )
 
 
@@ -96,6 +99,18 @@ def _persist_terminal_state(
 
 def ensure_jobs_table() -> None:
     init_db()
+    migrate_review_jobs_schema()
+
+
+def migrate_review_jobs_schema() -> None:
+    engine = get_engine()
+    inspector = inspect(engine)
+    if "review_jobs" not in inspector.get_table_names():
+        return
+    existing = {column["name"] for column in inspector.get_columns("review_jobs")}
+    if "archived_at" not in existing:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE review_jobs ADD COLUMN archived_at TIMESTAMPTZ"))
 
 
 def create_review_job(
@@ -123,11 +138,13 @@ def create_review_job(
         return _record_to_public(record)
 
 
-def list_review_jobs(*, limit: int = 50) -> list[ReviewJobPublic]:
+def list_review_jobs(*, limit: int = 50, include_archived: bool = False) -> list[ReviewJobPublic]:
     with db_session() as session:
+        query = session.query(ReviewJobRecord)
+        if not include_archived:
+            query = query.filter(ReviewJobRecord.archived_at.is_(None))
         records = (
-            session.query(ReviewJobRecord)
-            .order_by(ReviewJobRecord.created_at.desc())
+            query.order_by(ReviewJobRecord.created_at.desc())
             .limit(limit)
             .all()
         )
@@ -196,4 +213,39 @@ def mark_job_failed(task_id: str, error: str) -> None:
         record.updated_at = _now()
         record.completed_at = _now()
         session.add(record)
+        session.commit()
+
+
+def archive_review_job(task_id: str) -> ReviewJobPublic:
+    with db_session() as session:
+        record = session.get(ReviewJobRecord, task_id)
+        if record is None:
+            raise LookupError("Job not found.")
+        record.archived_at = _now()
+        record.updated_at = _now()
+        session.add(record)
+        session.commit()
+        session.refresh(record)
+        return _record_to_public(record)
+
+
+def unarchive_review_job(task_id: str) -> ReviewJobPublic:
+    with db_session() as session:
+        record = session.get(ReviewJobRecord, task_id)
+        if record is None:
+            raise LookupError("Job not found.")
+        record.archived_at = None
+        record.updated_at = _now()
+        session.add(record)
+        session.commit()
+        session.refresh(record)
+        return _record_to_public(record)
+
+
+def delete_review_job(task_id: str) -> None:
+    with db_session() as session:
+        record = session.get(ReviewJobRecord, task_id)
+        if record is None:
+            raise LookupError("Job not found.")
+        session.delete(record)
         session.commit()

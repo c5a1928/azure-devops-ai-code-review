@@ -138,6 +138,7 @@ export interface ReviewJob {
   created_at: string;
   updated_at: string;
   completed_at?: string | null;
+  archived_at?: string | null;
 }
 
 export const REVIEW_STEP_LABELS: Record<string, string> = {

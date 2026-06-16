@@ -9,6 +9,7 @@ import {
   GitConnectionInput,
   GitPlatformInfo,
   PLATFORM_ICONS,
+  SECRET_PLACEHOLDER,
 } from '../../models/types';
 
 const CUSTOM_BASE_URL = CUSTOM_BASE_URL_VALUE;
@@ -44,14 +45,19 @@ const CUSTOM_BASE_URL = CUSTOM_BASE_URL_VALUE;
                   <strong>{{ connection.display_name }}</strong>
                   <span class="project-path">{{ connection.owner }} · {{ connection.base_url }}</span>
                 </div>
-                <button
-                  class="secondary"
-                  type="button"
-                  [disabled]="deletingConnectionId === connection.id"
-                  (click)="removeConnection(connection)"
-                >
-                  {{ deletingConnectionId === connection.id ? 'Removing...' : 'Remove' }}
-                </button>
+                <div class="row-actions">
+                  <button class="secondary" type="button" (click)="startEditConnection(connection)">
+                    Edit
+                  </button>
+                  <button
+                    class="secondary"
+                    type="button"
+                    [disabled]="deletingConnectionId === connection.id"
+                    (click)="removeConnection(connection)"
+                  >
+                    {{ deletingConnectionId === connection.id ? 'Removing...' : 'Remove' }}
+                  </button>
+                </div>
               </div>
             }
           </div>
@@ -59,8 +65,14 @@ const CUSTOM_BASE_URL = CUSTOM_BASE_URL_VALUE;
       </div>
 
       <div class="card">
-        <h2>Add git platform</h2>
-        <p class="subtitle">Choose a provider and enter connection details.</p>
+        <h2>{{ editingConnectionId ? 'Edit git platform' : 'Add git platform' }}</h2>
+        <p class="subtitle">
+          @if (editingConnectionId) {
+            Update connection details. Leave the token blank to keep the existing one.
+          } @else {
+            Choose a provider and enter connection details.
+          }
+        </p>
 
         <div class="platform-grid">
           @for (platform of platforms; track platform.id) {
@@ -68,6 +80,7 @@ const CUSTOM_BASE_URL = CUSTOM_BASE_URL_VALUE;
               type="button"
               class="platform-card"
               [class.selected]="newConnection.platform === platform.id"
+              [disabled]="editingConnectionId !== null"
               (click)="selectPlatform(platform)"
             >
               <div class="platform-icon">{{ iconFor(platform.id) }}</div>
@@ -78,7 +91,7 @@ const CUSTOM_BASE_URL = CUSTOM_BASE_URL_VALUE;
         </div>
 
         @if (selectedPlatform) {
-          <form (ngSubmit)="addConnection()">
+          <form (ngSubmit)="saveConnection()">
             <div class="section-title">Connection</div>
             <div class="grid-2">
               <div class="field">
@@ -138,13 +151,30 @@ const CUSTOM_BASE_URL = CUSTOM_BASE_URL_VALUE;
                   type="password"
                   [(ngModel)]="newConnection.token"
                   name="token"
-                  required
+                  [required]="!editingConnectionId"
+                  [placeholder]="editingConnectionId ? 'Leave blank to keep existing token' : ''"
                 />
+                @if (editingConnectionId && editingConnection?.token_masked) {
+                  <small>Current token: {{ editingConnection?.token_masked }}</small>
+                }
               </div>
             </div>
             <div class="actions">
+              @if (editingConnectionId) {
+                <button class="secondary" type="button" [disabled]="saving" (click)="cancelEditConnection()">
+                  Cancel
+                </button>
+              }
               <button class="primary" type="submit" [disabled]="saving">
-                {{ saving ? 'Adding...' : 'Add git platform' }}
+                {{
+                  saving
+                    ? editingConnectionId
+                      ? 'Saving...'
+                      : 'Adding...'
+                    : editingConnectionId
+                      ? 'Save changes'
+                      : 'Add git platform'
+                }}
               </button>
             </div>
           </form>
@@ -170,6 +200,7 @@ export class GitIntegrationPageComponent implements OnInit {
   loading = true;
   saving = false;
   deletingConnectionId: number | null = null;
+  editingConnectionId: number | null = null;
   error = '';
   message = '';
 
@@ -181,6 +212,13 @@ export class GitIntegrationPageComponent implements OnInit {
 
   get selectedPlatform(): GitPlatformInfo | undefined {
     return this.platforms.find((platform) => platform.id === this.newConnection.platform);
+  }
+
+  get editingConnection(): GitConnection | undefined {
+    if (this.editingConnectionId === null) {
+      return undefined;
+    }
+    return this.connections.find((connection) => connection.id === this.editingConnectionId);
   }
 
   get ownerPlaceholder(): string {
@@ -241,7 +279,7 @@ export class GitIntegrationPageComponent implements OnInit {
     return this.baseUrlSelection.trim();
   }
 
-  async addConnection(): Promise<void> {
+  async saveConnection(): Promise<void> {
     if (!this.auth.requireAuthForAction(this.router.url)) {
       return;
     }
@@ -249,26 +287,85 @@ export class GitIntegrationPageComponent implements OnInit {
     this.error = '';
     this.message = '';
     try {
-      const created = await this.api.createGitConnection({
+      const token = this.newConnection.token.trim();
+      const payload: GitConnectionInput = {
         ...this.newConnection,
         base_url: this.resolvedBaseUrl(),
         label: this.newConnection.label.trim(),
         owner: this.newConnection.owner.trim(),
-        token: this.newConnection.token.trim(),
-      });
-      this.connections = [...this.connections, created];
-      this.newConnection = {
-        label: '',
-        platform: this.newConnection.platform,
-        base_url: this.newConnection.base_url,
-        owner: '',
-        token: '',
+        token:
+          token ||
+          (this.editingConnection?.token_configured ? SECRET_PLACEHOLDER : ''),
       };
-      this.message = 'Git platform added.';
+      if (this.editingConnectionId) {
+        const updated = await this.api.updateGitConnection(this.editingConnectionId, payload);
+        this.connections = this.connections.map((item) =>
+          item.id === updated.id ? updated : item,
+        );
+        this.cancelEditConnection();
+        this.message = 'Git platform updated.';
+      } else {
+        if (!payload.token) {
+          throw new Error('Access token is required.');
+        }
+        const created = await this.api.createGitConnection(payload);
+        this.connections = [...this.connections, created];
+        this.resetNewConnectionForm();
+        this.message = 'Git platform added.';
+      }
     } catch (err) {
-      this.error = err instanceof Error ? err.message : 'Failed to add git platform';
+      this.error =
+        err instanceof Error
+          ? err.message
+          : this.editingConnectionId
+            ? 'Failed to update git platform'
+            : 'Failed to add git platform';
     } finally {
       this.saving = false;
+    }
+  }
+
+  startEditConnection(connection: GitConnection): void {
+    this.editingConnectionId = connection.id;
+    this.newConnection = {
+      label: connection.label,
+      platform: connection.platform,
+      base_url: connection.base_url,
+      owner: connection.owner,
+      token: '',
+    };
+    const platform = this.platforms.find((item) => item.id === connection.platform);
+    const options = platform?.base_url_options ?? [];
+    const match = options.find((option) => option.url === connection.base_url);
+    if (match) {
+      this.baseUrlSelection = match.url;
+      this.customBaseUrl = '';
+    } else {
+      this.baseUrlSelection = this.customBaseUrlValue;
+      this.customBaseUrl = connection.base_url;
+    }
+    this.error = '';
+    this.message = '';
+  }
+
+  cancelEditConnection(): void {
+    this.editingConnectionId = null;
+    this.resetNewConnectionForm();
+    this.error = '';
+  }
+
+  private resetNewConnectionForm(): void {
+    const platform = this.selectedPlatform ?? this.platforms[0];
+    this.newConnection = {
+      label: '',
+      platform: platform?.id ?? 'azure_devops',
+      base_url: platform?.default_base_url ?? 'https://dev.azure.com',
+      owner: '',
+      token: '',
+    };
+    if (platform) {
+      this.baseUrlSelection = platform.default_base_url;
+      this.customBaseUrl = '';
     }
   }
 
