@@ -12,7 +12,7 @@ services:
 
   keycloak:
     ports: !override
-      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:8082:8080"
 
   api:
     command: >-
