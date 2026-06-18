@@ -11,6 +11,7 @@ import {
   ReviewSettings,
   ReviewSettingsInput,
   SECRET_PLACEHOLDER,
+  mergeLlmProviders,
   toSettingsForm,
 } from '../../models/types';
 
@@ -74,7 +75,8 @@ import {
                 </div>
               }
               @if (
-                selectedProvider.id === 'custom' || baseUrlSelection === customBaseUrlValue
+                (selectedProvider.id === 'custom' || baseUrlSelection === customBaseUrlValue) &&
+                selectedProvider.id !== 'cursor'
               ) {
                 <div class="field">
                   <label for="openaiBaseUrlCustom">Custom API base URL</label>
@@ -132,6 +134,15 @@ import {
                 />
                 @if (status?.openai_api_key_configured) {
                   <small>Configured: {{ status?.openai_api_key_masked }}</small>
+                }
+                @if (selectedProvider.id === 'cursor') {
+                  <small>
+                    Create a key in
+                    <a href="https://cursor.com/dashboard" target="_blank" rel="noreferrer">
+                      Cursor Dashboard → Integrations
+                    </a>
+                    . Uses the Cursor Agent API (not OpenAI).
+                  </small>
                 }
               </div>
               @if (selectedProvider.id === 'openai') {
@@ -220,6 +231,9 @@ export class AiIntegrationPageComponent implements OnInit {
   }
 
   providerSummary(provider: LlmProviderInfo): string {
+    if (provider.id === 'cursor') {
+      return 'Cursor Agent API';
+    }
     if (provider.id === 'custom') {
       return 'Any OpenAI-compatible endpoint';
     }
@@ -232,7 +246,7 @@ export class AiIntegrationPageComponent implements OnInit {
         this.api.listLlmProviders(),
         this.api.getSettings(),
       ]);
-      this.providers = providers;
+      this.providers = mergeLlmProviders(providers);
       this.status = settings;
       this.form = toSettingsForm(settings);
       this.syncBaseUrlSelection();
@@ -308,6 +322,11 @@ export class AiIntegrationPageComponent implements OnInit {
     if (!provider) {
       return;
     }
+    if (provider.id === 'cursor') {
+      this.baseUrlSelection = '';
+      this.customBaseUrl = '';
+      return;
+    }
     if (provider.id === 'custom') {
       this.baseUrlSelection = CUSTOM_BASE_URL_VALUE;
       this.customBaseUrl = this.form.openai_base_url;
@@ -326,6 +345,9 @@ export class AiIntegrationPageComponent implements OnInit {
   }
 
   private resolvedBaseUrl(): string {
+    if (this.selectedProvider?.id === 'cursor') {
+      return '';
+    }
     if (this.selectedProvider?.id === 'custom' || this.baseUrlSelection === CUSTOM_BASE_URL_VALUE) {
       return this.customBaseUrl.trim();
     }

@@ -33,6 +33,34 @@ export interface LlmProviderInfo {
   token_label: string;
 }
 
+/** Ensures Cursor appears in the AI provider picker even on older API builds. */
+export const CURSOR_LLM_PROVIDER: LlmProviderInfo = {
+  id: 'cursor',
+  name: 'Cursor',
+  default_base_url: '',
+  default_model: 'composer-2.5',
+  base_url_options: [],
+  model_options: [
+    { label: 'Composer 2.5 — recommended', id: 'composer-2.5' },
+    { label: 'Composer 2', id: 'composer-2' },
+    { label: 'GPT-5.4', id: 'gpt-5.4' },
+    { label: 'Claude Sonnet 4.6', id: 'claude-sonnet-4.6' },
+  ],
+  token_label: 'Cursor API key',
+};
+
+const LLM_PROVIDER_ORDER = ['openai', 'cursor', 'anthropic', 'gemini', 'llama', 'custom'] as const;
+
+export function mergeLlmProviders(providers: LlmProviderInfo[]): LlmProviderInfo[] {
+  const byId = new Map(providers.map((provider) => [provider.id, provider]));
+  if (!byId.has('cursor')) {
+    byId.set('cursor', CURSOR_LLM_PROVIDER);
+  }
+  return LLM_PROVIDER_ORDER.map((id) => byId.get(id)).filter(
+    (provider): provider is LlmProviderInfo => provider !== undefined,
+  );
+}
+
 export interface ReviewSettings {
   git_platform: string;
   git_base_url: string;
