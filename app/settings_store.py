@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from sqlalchemy import inspect, text
@@ -139,6 +140,20 @@ def _env_defaults() -> dict[str, Any]:
 
     platform = os.getenv("GIT_PLATFORM", "azure_devops")
     defaults = PLATFORM_DEFAULTS.get(platform, PLATFORM_DEFAULTS["azure_devops"])
+    cursor_key = os.getenv("CURSOR_API_KEY", "").strip()
+    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if cursor_key:
+        llm_provider = "cursor"
+        llm_api_key = cursor_key
+        llm_base_url = ""
+        llm_model = os.getenv("CURSOR_MODEL", os.getenv("OPENAI_MODEL", "composer-2.5"))
+        llm_reasoning = ""
+    else:
+        llm_provider = os.getenv("LLM_PROVIDER", "openai")
+        llm_api_key = openai_key
+        llm_base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        llm_model = os.getenv("OPENAI_MODEL", "gpt-5.5")
+        llm_reasoning = os.getenv("OPENAI_REASONING_EFFORT", "high")
     return {
         "git_platform": platform,
         "git_base_url": os.getenv("GIT_BASE_URL", defaults["base_url"]),
@@ -152,13 +167,13 @@ def _env_defaults() -> dict[str, Any]:
         "azure_devops_org": os.getenv("AZURE_DEVOPS_ORG", ""),
         "azure_devops_project": os.getenv("AZURE_DEVOPS_PROJECT", ""),
         "azure_devops_pat": os.getenv("AZURE_DEVOPS_PAT", ""),
-        "llm_provider": os.getenv("LLM_PROVIDER", "openai"),
-        "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
-        "openai_base_url": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-        "openai_model": os.getenv("OPENAI_MODEL", "gpt-5.5"),
+        "llm_provider": llm_provider,
+        "openai_api_key": llm_api_key,
+        "openai_base_url": llm_base_url,
+        "openai_model": llm_model,
         "openai_temperature": os.getenv("OPENAI_TEMPERATURE", "0.0"),
         "openai_max_tokens": os.getenv("OPENAI_MAX_TOKENS", "16384"),
-        "openai_reasoning_effort": os.getenv("OPENAI_REASONING_EFFORT", "high"),
+        "openai_reasoning_effort": llm_reasoning,
         "gmail_user": os.getenv("GMAIL_USER", ""),
         "gmail_app_password": os.getenv("GMAIL_APP_PASSWORD", ""),
     }
@@ -199,12 +214,29 @@ def get_public_settings() -> ReviewSettingsPublic:
         return _record_to_public(record)
 
 
+def _apply_env_llm_overrides(runtime: ReviewRuntimeSettings) -> ReviewRuntimeSettings:
+    import os
+
+    cursor_key = os.getenv("CURSOR_API_KEY", "").strip()
+    if not cursor_key:
+        return runtime
+    cursor_model = os.getenv("CURSOR_MODEL", "").strip() or runtime.openai_model or "composer-2.5"
+    return replace(
+        runtime,
+        llm_provider="cursor",
+        openai_api_key=cursor_key,
+        openai_base_url="",
+        openai_model=cursor_model,
+        openai_reasoning_effort=None,
+    )
+
+
 def get_runtime_settings() -> ReviewRuntimeSettings:
     with db_session() as session:
         record = _get_or_create_record(session)
         runtime = _record_to_runtime(record)
         runtime.validate_platform()
-        return runtime
+        return _apply_env_llm_overrides(runtime)
 
 
 def update_settings(payload: ReviewSettingsUpdate) -> ReviewSettingsPublic:

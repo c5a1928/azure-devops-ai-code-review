@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 from app.services.git.types import FileDiff, PullRequestContext
 from app.services.framework_detection import build_framework_review_section
-from app.services.openai_chat import call_chat_completion
+from app.services.llm_completion import call_llm_completion
 from app.services.line_mapping import (
     format_numbered_content,
     normalize_repo_path,
@@ -62,6 +62,7 @@ class CodeReviewer:
     def __init__(
         self,
         *,
+        llm_provider: str = "openai",
         api_key: str,
         base_url: str,
         model: str,
@@ -69,6 +70,7 @@ class CodeReviewer:
         max_tokens: int = 4096,
         reasoning_effort: str | None = None,
     ) -> None:
+        self.llm_provider = llm_provider
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -240,7 +242,8 @@ Files:
             if detected_frameworks
             else ""
         )
-        return call_chat_completion(
+        return call_llm_completion(
+            llm_provider=self.llm_provider,
             api_key=self.api_key,
             base_url=self.base_url,
             model=self.model,

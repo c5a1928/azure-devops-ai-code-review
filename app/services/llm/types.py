@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-LLM_PROVIDERS = frozenset({"openai", "anthropic", "gemini", "llama", "custom"})
+LLM_PROVIDERS = frozenset({"openai", "cursor", "anthropic", "gemini", "llama", "custom"})
 
 LLM_PROVIDER_NAMES: dict[str, str] = {
     "openai": "OpenAI",
+    "cursor": "Cursor",
     "anthropic": "Anthropic",
     "gemini": "Gemini",
     "llama": "Llama",
@@ -15,6 +16,11 @@ LLM_PROVIDER_DEFAULTS: dict[str, dict[str, str]] = {
         "base_url": "https://api.openai.com/v1",
         "default_model": "gpt-5.5",
         "token_label": "OpenAI API key",
+    },
+    "cursor": {
+        "base_url": "",
+        "default_model": "composer-2.5",
+        "token_label": "Cursor API key",
     },
     "anthropic": {
         "base_url": "https://openrouter.ai/api/v1",
@@ -46,6 +52,7 @@ LLM_PROVIDER_BASE_URL_OPTIONS: dict[str, list[dict[str, str]]] = {
             "url": "https://your-resource.openai.azure.com/openai/deployments/your-deployment",
         },
     ],
+    "cursor": [],
     "anthropic": [
         {"label": "OpenRouter", "url": "https://openrouter.ai/api/v1"},
         {
@@ -75,6 +82,12 @@ LLM_PROVIDER_MODEL_OPTIONS: dict[str, list[dict[str, str]]] = {
         {"label": "GPT-4o mini — fast & cheap", "id": "gpt-4o-mini"},
         {"label": "o3-mini — reasoning", "id": "o3-mini"},
     ],
+    "cursor": [
+        {"label": "Composer 2.5 — recommended", "id": "composer-2.5"},
+        {"label": "Composer 2", "id": "composer-2"},
+        {"label": "GPT-5.4", "id": "gpt-5.4"},
+        {"label": "Claude Sonnet 4.6", "id": "claude-sonnet-4.6"},
+    ],
     "anthropic": [
         {"label": "Claude Sonnet 4", "id": "anthropic/claude-sonnet-4"},
         {"label": "Claude 3.7 Sonnet", "id": "anthropic/claude-3.7-sonnet"},
@@ -99,7 +112,7 @@ def infer_llm_provider(base_url: str, model: str) -> str:
     url = base_url.strip().lower()
     model_id = model.strip().lower()
 
-    for provider_id in ("openai", "anthropic", "gemini", "llama"):
+    for provider_id in ("openai", "cursor", "anthropic", "gemini", "llama"):
         for option in LLM_PROVIDER_BASE_URL_OPTIONS[provider_id]:
             if option["url"].lower() == url:
                 return provider_id
@@ -115,5 +128,8 @@ def infer_llm_provider(base_url: str, model: str) -> str:
         return "llama"
     if "anthropic" in model_id or "claude" in model_id:
         return "anthropic"
+
+    if model_id.startswith("composer") or model_id.startswith("crsr"):
+        return "cursor"
 
     return "custom"

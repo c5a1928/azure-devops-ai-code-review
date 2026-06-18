@@ -160,7 +160,7 @@ import {
                   name="maxTokens"
                 />
               </div>
-              @if (selectedProvider.id !== 'openai' || !form.openai_reasoning_effort) {
+              @if (selectedProvider.id !== 'openai' && selectedProvider.id !== 'cursor') {
                 <div class="field">
                   <label for="temperature">Temperature</label>
                   <input
@@ -250,6 +250,9 @@ export class AiIntegrationPageComponent implements OnInit {
     this.form.openai_model = provider.default_model;
     if (provider.id !== 'openai') {
       this.form.openai_reasoning_effort = null;
+    }
+    if (provider.id === 'cursor') {
+      this.form.openai_base_url = '';
     }
     this.syncBaseUrlSelection();
     this.syncModelSelection();

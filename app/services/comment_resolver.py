@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from app.services.git.types import FileDiff, PullRequestContext, ReviewThread
-from app.services.openai_chat import call_chat_completion
+from app.services.llm_completion import call_llm_completion
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +12,7 @@ class CommentResolver:
     def __init__(
         self,
         *,
+        llm_provider: str = "openai",
         api_key: str,
         base_url: str,
         model: str,
@@ -19,6 +20,7 @@ class CommentResolver:
         max_tokens: int = 2048,
         reasoning_effort: str | None = None,
     ) -> None:
+        self.llm_provider = llm_provider
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -86,7 +88,8 @@ Rules:
 """
 
     def _call_llm(self, prompt: str) -> str:
-        return call_chat_completion(
+        return call_llm_completion(
+            llm_provider=self.llm_provider,
             api_key=self.api_key,
             base_url=self.base_url,
             model=self.model,

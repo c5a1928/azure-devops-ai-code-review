@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from app.services.git.types import GIT_PLATFORMS
 
@@ -34,9 +34,8 @@ class ReviewRuntimeSettings:
     gmail_app_password: str
 
     def missing_fields(self) -> list[str]:
-        required: dict[str, str] = {
-            "openai_api_key": self.openai_api_key,
-        }
+        key_field = "cursor_api_key" if self.llm_provider == "cursor" else "openai_api_key"
+        required: dict[str, str] = {key_field: self.openai_api_key}
         return [name for name, value in required.items() if not str(value).strip()]
 
     def validate_platform(self) -> None:

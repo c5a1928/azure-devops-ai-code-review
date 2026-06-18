@@ -109,7 +109,11 @@ export class ReviewPageComponent implements OnInit {
   }
 
   get needsAi(): boolean {
-    return Boolean(this.settings?.missing_fields.some((f) => f.startsWith('openai')));
+    return Boolean(
+      this.settings?.missing_fields.some(
+        (field) => field === 'openai_api_key' || field === 'cursor_api_key',
+      ),
+    );
   }
 
   get needsProjects(): boolean {

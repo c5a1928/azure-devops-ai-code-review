@@ -14,6 +14,7 @@ from app.settings_store import get_runtime_settings
 from app.services.comment_resolver import CommentResolver
 from app.services.email import send_review_notification
 from app.services.git.factory import create_git_client
+from app.services.openai_chat import ChatCompletionError
 from app.services.reviewer import CodeReviewer
 
 
@@ -47,6 +48,7 @@ def review_pull_request(
     client = create_git_client(settings, project=project_name, connection=connection)
 
     reviewer = CodeReviewer(
+        llm_provider=settings.llm_provider,
         api_key=settings.openai_api_key,
         base_url=settings.openai_base_url,
         model=settings.openai_model,
@@ -55,6 +57,7 @@ def review_pull_request(
         reasoning_effort=settings.openai_reasoning_effort,
     )
     comment_resolver = CommentResolver(
+        llm_provider=settings.llm_provider,
         api_key=settings.openai_api_key,
         base_url=settings.openai_base_url,
         model=settings.openai_model,
@@ -162,6 +165,33 @@ def review_pull_request(
         mark_job_completed(task_id, result)
         return result
 
+    except ChatCompletionError as exc:
+        if exc.status_code == 429:
+            error_message = (
+                "LLM rate limit exceeded (HTTP 429). "
+                "The service retried automatically but the provider is still throttling. "
+                "Wait a few minutes and try again, use a smaller PR, or check your API quota."
+            )
+        else:
+            error_message = str(exc)
+        mark_job_failed(task_id, error_message)
+        try:
+            send_review_notification(
+                gmail_user=settings.gmail_user,
+                gmail_app_password=settings.gmail_app_password,
+                recipient=recipient_email,
+                subject=f"PR review failed: {repo_name} #{pr_id}",
+                body_text=(
+                    f"The automated PR review failed.\n\n"
+                    f"Repository: {repo_name}\n"
+                    f"PR ID: {pr_id}\n"
+                    f"URL: {pr_url}\n\n"
+                    f"Error: {error_message}\n"
+                ),
+            )
+        except Exception:
+            pass
+        raise
     except Exception as exc:
         error_message = f"{type(exc).__name__}: {exc}"
         mark_job_failed(task_id, error_message)

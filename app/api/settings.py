@@ -89,7 +89,7 @@ def list_git_platforms() -> list[GitPlatformInfo]:
 @router.get("/llm-providers", response_model=list[LlmProviderInfo])
 def list_llm_providers() -> list[LlmProviderInfo]:
     providers: list[LlmProviderInfo] = []
-    for provider_id in ("openai", "anthropic", "gemini", "llama", "custom"):
+    for provider_id in ("openai", "cursor", "anthropic", "gemini", "llama", "custom"):
         meta = LLM_PROVIDER_DEFAULTS[provider_id]
         providers.append(
             LlmProviderInfo(

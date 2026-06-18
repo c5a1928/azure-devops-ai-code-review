@@ -196,6 +196,7 @@ export const PLATFORM_ICONS: Record<string, string> = {
 
 export const LLM_PROVIDER_ICONS: Record<string, string> = {
   openai: 'OA',
+  cursor: 'CU',
   anthropic: 'AN',
   gemini: 'GM',
   llama: 'LL',
