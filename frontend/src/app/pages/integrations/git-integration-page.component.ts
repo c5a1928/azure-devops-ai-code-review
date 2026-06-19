@@ -19,10 +19,7 @@ const CUSTOM_BASE_URL = CUSTOM_BASE_URL_VALUE;
   standalone: true,
   imports: [FormsModule],
   template: `
-    <div class="page-header">
-      <h1>Git platform</h1>
-      <p>Add one or more git platform connections. Projects are linked to a connection when you create them.</p>
-    </div>
+    <p class="page-lead">Git platform connections. Projects link to a connection when created.</p>
 
     @if (loading) {
       <div class="card">Loading...</div>

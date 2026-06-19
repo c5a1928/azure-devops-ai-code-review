@@ -9,10 +9,7 @@ import { GitProject, ReviewSettings } from '../../models/types';
   standalone: true,
   imports: [FormsModule, RouterLink],
   template: `
-    <div class="page-header">
-      <h1>Run review</h1>
-      <p>Select a configured project and enter a {{ prIdLabel }} to queue an AI review.</p>
-    </div>
+    <p class="page-lead">Select a project and enter a {{ prIdLabel }} to queue an AI review.</p>
 
     <div class="card">
       @if (settings && !settings.configured) {

@@ -10,10 +10,7 @@ import { ReviewJob, REVIEW_STEP_LABELS } from '../../models/types';
   standalone: true,
   imports: [RouterLink, DatePipe, JsonPipe, FormsModule],
   template: `
-    <div class="page-header">
-      <h1>Jobs</h1>
-      <p>Monitor review progress. Jobs keep running if you leave this page.</p>
-    </div>
+    <p class="page-lead">Monitor review progress. Jobs keep running if you leave this page.</p>
 
     <div class="card">
       @if (error) {

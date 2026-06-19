@@ -21,7 +21,7 @@ const PAGE_TITLES: Record<string, string> = {
     <div class="console">
       <aside class="sidebar">
         <a routerLink="/" class="sidebar-brand">
-          <img src="favicon-32x32.png" alt="" class="brand-logo" width="28" height="28" />
+          <img src="favicon-32x32.png" alt="" class="brand-logo" width="22" height="22" />
           <div class="brand-text">PlyRev</div>
         </a>
 
@@ -32,7 +32,6 @@ const PAGE_TITLES: Record<string, string> = {
             routerLinkActive="active"
             [routerLinkActiveOptions]="{ exact: true }"
           >
-            <span class="nav-icon">▶</span>
             Run review
           </a>
           <a
@@ -40,7 +39,6 @@ const PAGE_TITLES: Record<string, string> = {
             routerLinkActive="active"
             [routerLinkActiveOptions]="{ exact: true }"
           >
-            <span class="nav-icon">◷</span>
             Jobs
           </a>
           <a
@@ -48,29 +46,21 @@ const PAGE_TITLES: Record<string, string> = {
             routerLinkActive="active"
             [routerLinkActiveOptions]="{ exact: true }"
           >
-            <span class="nav-icon">◫</span>
             Projects
           </a>
         </nav>
 
         <div class="sidebar-section">Integrations</div>
         <nav class="sidebar-nav">
-          <a routerLink="/console/integrations/git" routerLinkActive="active">
-            <span class="nav-icon">⌥</span>
-            Git platform
-          </a>
-          <a routerLink="/console/integrations/ai" routerLinkActive="active">
-            <span class="nav-icon">✦</span>
-            AI model
-          </a>
+          <a routerLink="/console/integrations/git" routerLinkActive="active">Git platform</a>
+          <a routerLink="/console/integrations/ai" routerLinkActive="active">AI model</a>
           <a routerLink="/console/integrations/notifications" routerLinkActive="active">
-            <span class="nav-icon">✉</span>
             Notifications
           </a>
         </nav>
 
         <div class="sidebar-footer">
-          <a routerLink="/">← Home</a>
+          <a routerLink="/">Home</a>
         </div>
       </aside>
 
@@ -91,9 +81,9 @@ const PAGE_TITLES: Record<string, string> = {
 
         @if (!signedIn && showExploreBanner) {
           <div class="explore-banner">
-            You're exploring the console.
+            Exploring without sign-in.
             <a routerLink="/login" [queryParams]="{ returnUrl: currentUrl }">Sign in</a>
-            to save settings or run reviews.
+            to save settings and run reviews.
           </div>
         }
 

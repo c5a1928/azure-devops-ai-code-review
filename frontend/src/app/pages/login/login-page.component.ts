@@ -11,13 +11,15 @@ import { AuthService } from '../../services/auth.service';
   template: `
     <div class="login-shell">
       <div class="card login-card">
-        <a routerLink="/" class="back-link">← Back to home</a>
+        <a routerLink="/" class="back-link">← Home</a>
 
-        <div class="sidebar-brand" style="border: none; padding: 0 0 1rem;">
-          <img src="favicon-32x32.png" alt="" class="brand-logo" width="28" height="28" />
-          <div class="brand-text">PlyRev</div>
+        <div class="sidebar-brand" style="border: none; padding: 0 0 0.75rem; background: transparent;">
+          <img src="favicon-32x32.png" alt="" class="brand-logo" width="22" height="22" />
+          <div class="brand-text" style="color: var(--pr-text);">PlyRev</div>
         </div>
-        <h2 style="margin: 0 0 0.35rem; font-weight: 400;">Sign in to run reviews</h2>
+        <h2 style="margin: 0 0 0.25rem; font-weight: 700; font-size: 1rem; letter-spacing: -0.02em;">
+          Sign in to run reviews
+        </h2>
         <p class="subtitle">
           @if (provider === 'keycloak') {
             Create an account or sign in to queue AI-powered pull request reviews.

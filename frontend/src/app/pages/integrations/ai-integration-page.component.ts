@@ -20,10 +20,7 @@ import {
   standalone: true,
   imports: [FormsModule],
   template: `
-    <div class="page-header">
-      <h1>AI model</h1>
-      <p>Configure the LLM provider used to generate code reviews.</p>
-    </div>
+    <p class="page-lead">LLM provider and model used to generate code reviews.</p>
 
     @if (loading) {
       <div class="card">Loading...</div>

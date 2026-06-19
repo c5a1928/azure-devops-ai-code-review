@@ -15,10 +15,7 @@ import {
   standalone: true,
   imports: [FormsModule],
   template: `
-    <div class="page-header">
-      <h1>Notifications</h1>
-      <p>Send an email summary when a review completes. Gmail app passwords are supported.</p>
-    </div>
+    <p class="page-lead">Email summary when a review completes. Gmail app passwords supported.</p>
 
     @if (loading) {
       <div class="card">Loading...</div>

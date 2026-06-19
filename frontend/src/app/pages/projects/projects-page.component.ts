@@ -15,10 +15,7 @@ import {
   standalone: true,
   imports: [FormsModule, RouterLink],
   template: `
-    <div class="page-header">
-      <h1>Projects</h1>
-      <p>Manage repositories to review. Each project is linked to a configured git platform.</p>
-    </div>
+    <p class="page-lead">Repositories to review, each linked to a configured git platform.</p>
 
     @if (loading) {
       <div class="card">Loading...</div>
