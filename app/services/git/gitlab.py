@@ -8,7 +8,13 @@ from dataclasses import dataclass
 from app.services.git.base import GitPlatformClient
 from app.services.git.http import GitAPIError, request_json, request_text
 from app.services.git.types import FileDiff, PullRequestContext, ReviewThread, WorkItemContext
-from app.services.line_mapping import parse_new_file_changed_lines
+from app.services.line_mapping import (
+    GitlabDiffLine,
+    build_gitlab_diff_position,
+    parse_gitlab_diff_lines,
+    parse_new_file_changed_lines,
+    resolve_gitlab_diff_line,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +26,8 @@ class _MrChangeMeta:
     deleted_file: bool
     new_file: bool
     renamed_file: bool
+    lines_by_new: dict[int, GitlabDiffLine]
+    lines_by_old: dict[int, GitlabDiffLine]
 
 
 class GitLabClient(GitPlatformClient):
@@ -172,12 +180,16 @@ class GitLabClient(GitPlatformClient):
             new_file = bool(change.get("new_file"))
             renamed_file = bool(change.get("renamed_file"))
             normalized_path = f"/{path.lstrip('/')}"
+            line_path = new_path or old_path
+            lines_by_new, lines_by_old = parse_gitlab_diff_lines(diff_text, line_path)
             self._change_meta[(cache_prefix[0], cache_prefix[1], normalized_path.lstrip("/"))] = _MrChangeMeta(
                 new_path=new_path or old_path,
                 old_path=old_path or new_path,
                 deleted_file=deleted_file,
                 new_file=new_file,
                 renamed_file=renamed_file,
+                lines_by_new=lines_by_new,
+                lines_by_old=lines_by_old,
             )
 
             new_content = ""
@@ -309,26 +321,62 @@ class GitLabClient(GitPlatformClient):
         old_path = change_meta.old_path if change_meta else normalized_path
         deleted_file = change_meta.deleted_file if change_meta else False
 
-        position: dict[str, object] = {
-            "base_sha": pr.target_commit,
-            "start_sha": pr.start_commit or pr.target_commit,
-            "head_sha": pr.source_commit,
-            "position_type": "text",
-            "old_path": old_path,
-            "new_path": new_path,
-        }
-        if deleted_file:
-            position["old_line"] = line
-        else:
-            position["new_line"] = line
+        diff_line = None
+        if change_meta:
+            diff_line = resolve_gitlab_diff_line(
+                change_meta.lines_by_new,
+                change_meta.lines_by_old,
+                requested_line=line,
+                deleted_file=deleted_file,
+            )
 
-        data = request_json(
-            method="POST",
-            url=self._mr_url(project_path, pr_id, "/discussions"),
-            token=self.token,
-            auth_header="PRIVATE-TOKEN",
-            body={"body": content, "position": position},
+        if diff_line is None:
+            logger.warning(
+                "No GitLab diff line for %s:%s in MR %s; posting as MR note",
+                file_path,
+                line,
+                pr_id,
+            )
+            return self.post_summary_comment(
+                repo_name,
+                pr_id,
+                f"**{file_path.lstrip('/')}:{line}**\n\n{content}",
+                project=project,
+            )
+
+        position = build_gitlab_diff_position(
+            base_sha=pr.target_commit,
+            start_sha=pr.start_commit or pr.target_commit,
+            head_sha=pr.source_commit,
+            old_path=old_path,
+            new_path=new_path,
+            diff_line=diff_line,
         )
+
+        try:
+            data = request_json(
+                method="POST",
+                url=self._mr_url(project_path, pr_id, "/discussions"),
+                token=self.token,
+                auth_header="PRIVATE-TOKEN",
+                body={"body": content, "position": position},
+            )
+        except GitAPIError as exc:
+            if exc.status_code != 400:
+                raise
+            logger.warning(
+                "GitLab rejected inline position for %s:%s in MR %s (%s); posting as MR note",
+                file_path,
+                line,
+                pr_id,
+                exc,
+            )
+            return self.post_summary_comment(
+                repo_name,
+                pr_id,
+                f"**{file_path.lstrip('/')}:{line}**\n\n{content}",
+                project=project,
+            )
         notes = data.get("notes") or []
         if notes:
             return int(notes[0].get("id", 0))

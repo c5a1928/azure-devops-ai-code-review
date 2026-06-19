@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import re
+from dataclasses import dataclass
 
 
 def normalize_repo_path(path: str) -> str:
@@ -101,3 +103,139 @@ def _offset_end(line: str, snippet: str) -> int:
 
 def _normalize_code(value: str) -> str:
     return re.sub(r"\s+", "", value)
+
+
+@dataclass(frozen=True)
+class GitlabDiffLine:
+    old_line: int
+    new_line: int
+    is_added: bool
+    is_removed: bool
+    line_code: str
+    line_range_type: str
+
+
+def gitlab_line_code(file_path: str, old_line: int, new_line: int) -> str:
+    """GitLab diff line code: sha1(path)_old_line_new_line."""
+    return f"{hashlib.sha1(file_path.encode()).hexdigest()}_{old_line}_{new_line}"
+
+
+def parse_gitlab_diff_lines(
+    diff: str, file_path: str
+) -> tuple[dict[int, GitlabDiffLine], dict[int, GitlabDiffLine]]:
+    """Map diff hunks to GitLab line positions keyed by new/old file line numbers."""
+    by_new: dict[int, GitlabDiffLine] = {}
+    by_old: dict[int, GitlabDiffLine] = {}
+    old_line = 0
+    new_line = 0
+
+    for raw in diff.splitlines():
+        if raw.startswith("@@"):
+            match = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", raw)
+            if match:
+                old_line = int(match.group(1))
+                new_line = int(match.group(2))
+            continue
+        if raw.startswith("+++") or raw.startswith("---"):
+            continue
+        if raw.startswith("+"):
+            entry = GitlabDiffLine(
+                old_line=0,
+                new_line=new_line,
+                is_added=True,
+                is_removed=False,
+                line_code=gitlab_line_code(file_path, 0, new_line),
+                line_range_type="new",
+            )
+            by_new[new_line] = entry
+            new_line += 1
+        elif raw.startswith("-"):
+            entry = GitlabDiffLine(
+                old_line=old_line,
+                new_line=0,
+                is_added=False,
+                is_removed=True,
+                line_code=gitlab_line_code(file_path, old_line, 0),
+                line_range_type="old",
+            )
+            by_old[old_line] = entry
+            old_line += 1
+        elif raw.startswith(" "):
+            entry = GitlabDiffLine(
+                old_line=old_line,
+                new_line=new_line,
+                is_added=False,
+                is_removed=False,
+                line_code=gitlab_line_code(file_path, old_line, new_line),
+                line_range_type="old",
+            )
+            by_new[new_line] = entry
+            by_old[old_line] = entry
+            old_line += 1
+            new_line += 1
+
+    return by_new, by_old
+
+
+def resolve_gitlab_diff_line(
+    lines_by_new: dict[int, GitlabDiffLine],
+    lines_by_old: dict[int, GitlabDiffLine],
+    *,
+    requested_line: int,
+    deleted_file: bool,
+) -> GitlabDiffLine | None:
+    index = lines_by_old if deleted_file else lines_by_new
+    if not index:
+        return None
+    if requested_line in index:
+        return index[requested_line]
+
+    preferred = {line: entry for line, entry in lines_by_new.items() if entry.is_added}
+    pool = preferred or index
+    nearest = min(pool.keys(), key=lambda line: abs(line - requested_line))
+    return pool[nearest]
+
+
+def build_gitlab_diff_position(
+    *,
+    base_sha: str,
+    start_sha: str,
+    head_sha: str,
+    old_path: str,
+    new_path: str,
+    diff_line: GitlabDiffLine,
+) -> dict[str, object]:
+    position: dict[str, object] = {
+        "base_sha": base_sha,
+        "start_sha": start_sha,
+        "head_sha": head_sha,
+        "position_type": "text",
+        "old_path": old_path,
+        "new_path": new_path,
+    }
+
+    if diff_line.is_removed:
+        position["old_line"] = diff_line.old_line
+    elif diff_line.is_added:
+        position["new_line"] = diff_line.new_line
+    else:
+        position["old_line"] = diff_line.old_line
+        position["new_line"] = diff_line.new_line
+
+    line_range_entry: dict[str, object] = {
+        "line_code": diff_line.line_code,
+        "type": diff_line.line_range_type,
+    }
+    if diff_line.is_removed:
+        line_range_entry["old_line"] = diff_line.old_line
+    elif diff_line.is_added:
+        line_range_entry["new_line"] = diff_line.new_line
+    else:
+        line_range_entry["old_line"] = diff_line.old_line
+        line_range_entry["new_line"] = diff_line.new_line
+
+    position["line_range"] = {
+        "start": dict(line_range_entry),
+        "end": dict(line_range_entry),
+    }
+    return position
