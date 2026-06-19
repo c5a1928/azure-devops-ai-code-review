@@ -33,7 +33,6 @@
   --pr-shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06);
   --page-padding-x: 1.25rem;
   --page-padding-y: 0.875rem;
-  --content-max-width: 1080px;
   --landing-max-width: 1160px;
   --fs-2xs: 0.8125rem;
   --fs-xs: 0.8125rem;
@@ -261,8 +260,12 @@ textarea {
 .content {
   flex: 1;
   width: 100%;
+  max-width: none;
   padding: var(--page-padding-y) var(--page-padding-x) 1.25rem;
-  max-width: var(--content-max-width);
+}
+
+.content > * {
+  width: 100%;
 }
 
 .page-header {
@@ -311,7 +314,7 @@ textarea {
 
 .grid-2 {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 0.625rem 0.75rem;
 }
 
