@@ -25,8 +25,8 @@
   --pr-error-bg: #fef3f2;
   --pr-error-text: #b42318;
   --pr-danger: #d92d20;
-  --pr-sidebar-width: 208px;
-  --pr-topbar-height: 48px;
+  --pr-sidebar-width: 212px;
+  --pr-topbar-height: 52px;
   --pr-radius: 6px;
   --pr-radius-lg: 8px;
   --pr-shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
@@ -35,8 +35,14 @@
   --page-padding-y: 0.875rem;
   --content-max-width: 1080px;
   --landing-max-width: 1160px;
+  --fs-2xs: 0.8125rem;
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 0.9375rem;
+  --fs-lg: 1rem;
+  --fs-xl: 1.125rem;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.45;
   color: var(--pr-text);
   background: var(--pr-bg);
@@ -128,12 +134,12 @@ textarea {
   color: white;
   display: grid;
   place-items: center;
-  font-size: 0.62rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .brand-text {
-  font-size: 0.88rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--pr-sidebar-text-active);
   letter-spacing: -0.01em;
@@ -141,7 +147,7 @@ textarea {
 
 .sidebar-section {
   padding: 0.875rem 0.875rem 0.25rem;
-  font-size: 0.65rem;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -161,7 +167,7 @@ textarea {
   border-radius: var(--pr-radius);
   color: var(--pr-sidebar-text);
   text-decoration: none;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   font-weight: 500;
   border-left: 2px solid transparent;
   margin-left: 0;
@@ -208,7 +214,7 @@ textarea {
 }
 
 .topbar-title {
-  font-size: 0.875rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--pr-text);
   letter-spacing: -0.01em;
@@ -218,7 +224,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   color: var(--pr-text-secondary);
 }
 
@@ -271,7 +277,7 @@ textarea {
 .page-lead {
   margin: 0 0 0.75rem;
   color: var(--pr-text-secondary);
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   line-height: 1.4;
 }
 
@@ -291,7 +297,7 @@ textarea {
 
 .card h2 {
   margin: 0 0 0.125rem;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -300,7 +306,7 @@ textarea {
 .card p.help {
   margin: 0 0 0.75rem;
   color: var(--pr-text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .grid-2 {
@@ -321,7 +327,7 @@ textarea {
 }
 
 .field label {
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--pr-text-secondary);
   text-transform: uppercase;
@@ -337,7 +343,7 @@ textarea {
   color: var(--pr-text);
   border-radius: var(--pr-radius);
   padding: 0.4375rem 0.5625rem;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 
@@ -358,7 +364,7 @@ textarea {
   color: var(--pr-text);
   border-radius: var(--pr-radius);
   padding: 0.4375rem 1.75rem 0.4375rem 0.5625rem;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   appearance: none;
   -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667085' d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
@@ -379,7 +385,7 @@ textarea {
 
 .field small {
   color: var(--pr-text-secondary);
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 
@@ -399,7 +405,7 @@ button.primary {
   padding: 0.4375rem 0.75rem;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   box-shadow: var(--pr-shadow-xs);
   transition: background 0.12s;
 }
@@ -416,7 +422,7 @@ button.secondary {
   padding: 0.4375rem 0.75rem;
   cursor: pointer;
   font-weight: 500;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
 }
 
 button.secondary:hover:not(:disabled) {
@@ -432,7 +438,7 @@ button:disabled {
   border-radius: var(--pr-radius);
   padding: 0.5rem 0.625rem;
   margin-bottom: 0.625rem;
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   line-height: 1.4;
 }
 
@@ -459,7 +465,7 @@ button:disabled {
   align-items: center;
   border-radius: 999px;
   padding: 0.125rem 0.4375rem;
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   border: 1px solid var(--pr-border);
   background: var(--pr-surface-raised);
@@ -498,7 +504,7 @@ button:disabled {
   white-space: pre-wrap;
   word-break: break-word;
   font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 /* ——— Login ——— */
@@ -555,7 +561,7 @@ button:disabled {
   display: grid;
   place-items: center;
   font-weight: 700;
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
   margin-bottom: 0.375rem;
   background: var(--pr-surface-raised);
   color: var(--pr-text-secondary);
@@ -570,13 +576,13 @@ button:disabled {
 
 .platform-card h3 {
   margin: 0 0 0.125rem;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 
 .platform-card p {
   margin: 0;
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   color: var(--pr-text-secondary);
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -585,7 +591,7 @@ button:disabled {
 
 .section-title {
   margin: 0.75rem 0 0.5rem;
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--pr-text-secondary);
   text-transform: uppercase;
@@ -626,13 +632,13 @@ button:disabled {
 }
 
 .project-info strong {
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 
 .project-path {
   color: var(--pr-text-secondary);
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   overflow-wrap: anywhere;
 }
 
@@ -646,7 +652,7 @@ button:disabled {
 
 .row-actions button {
   padding: 0.3125rem 0.5625rem;
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .jobs-toolbar {
@@ -660,7 +666,7 @@ button:disabled {
   align-items: center;
   gap: 0.375rem;
   color: var(--pr-text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .status-pill.archived {
@@ -697,7 +703,7 @@ button.secondary.danger:hover:not(:disabled) {
 
 .job-error {
   color: var(--pr-danger);
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
 }
 
 .job-detail {
@@ -710,19 +716,19 @@ button.secondary.danger:hover:not(:disabled) {
 
 .job-detail pre {
   overflow-x: auto;
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
 }
 
 .job-detail p {
   margin: 0 0 0.375rem;
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .step-label {
   margin-left: 0;
   color: var(--pr-text-secondary);
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
 }
 
 .topbar-actions {
@@ -735,7 +741,7 @@ button.secondary.danger:hover:not(:disabled) {
   margin-top: auto;
   padding: 0.625rem 0.875rem;
   border-top: 1px solid var(--pr-sidebar-border);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .sidebar-footer a {
@@ -750,7 +756,7 @@ button.secondary.danger:hover:not(:disabled) {
   background: var(--pr-warning-bg);
   color: var(--pr-warning-text);
   padding: 0.4375rem var(--page-padding-x);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   border-bottom: 1px solid #fedf89;
   width: 100%;
   flex-shrink: 0;
@@ -764,7 +770,7 @@ button.secondary.danger:hover:not(:disabled) {
 .back-link {
   display: inline-block;
   margin-bottom: 0.75rem;
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   color: var(--pr-text-secondary);
 }
 
@@ -801,7 +807,7 @@ button.secondary.danger:hover:not(:disabled) {
 
 .landing-brand .brand-text {
   color: var(--pr-text);
-  font-size: 0.88rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -809,7 +815,7 @@ button.secondary.danger:hover:not(:disabled) {
 .landing-nav {
   display: flex;
   gap: 1rem;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
 }
 
 .landing-nav a {
@@ -835,7 +841,7 @@ button.secondary.danger:hover:not(:disabled) {
   border-radius: var(--pr-radius);
   padding: 0.4375rem 0.75rem;
   font-weight: 600;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   text-decoration: none;
   border: 1px solid transparent;
   white-space: nowrap;
@@ -901,7 +907,7 @@ button.secondary.danger:hover:not(:disabled) {
 .eyebrow {
   margin: 0 0 0.375rem;
   color: var(--pr-primary);
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -918,7 +924,7 @@ button.secondary.danger:hover:not(:disabled) {
 
 .hero-lead {
   margin: 0 0 1rem;
-  font-size: 0.9375rem;
+  font-size: var(--fs-md);
   color: var(--pr-text-secondary);
   line-height: 1.5;
   max-width: 36rem;
@@ -933,7 +939,7 @@ button.secondary.danger:hover:not(:disabled) {
 
 .hero-note {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   color: var(--pr-text-secondary);
 }
 
@@ -943,7 +949,7 @@ button.secondary.danger:hover:not(:disabled) {
 
 .hero-panel h3 {
   margin: 0 0 0.5rem;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 
@@ -955,7 +961,7 @@ button.secondary.danger:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   line-height: 1.4;
 }
 
@@ -992,7 +998,7 @@ button.secondary.danger:hover:not(:disabled) {
 
 .section-heading h2 {
   margin: 0 0 0.25rem;
-  font-size: 1.125rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -1000,7 +1006,7 @@ button.secondary.danger:hover:not(:disabled) {
 .section-heading p {
   margin: 0;
   color: var(--pr-text-secondary);
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
 }
 
 .feature-grid {
@@ -1032,27 +1038,27 @@ button.secondary.danger:hover:not(:disabled) {
   background: var(--pr-primary-soft);
   color: var(--pr-primary);
   font-weight: 700;
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
   margin-bottom: 0.5rem;
   border: 1px solid #c7d7fe;
 }
 
 .feature-card h3 {
   margin: 0 0 0.25rem;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 
 .feature-card p {
   margin: 0 0 0.5rem;
   color: var(--pr-text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   line-height: 1.4;
 }
 
 .feature-link {
   color: var(--pr-primary);
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -1081,21 +1087,21 @@ button.secondary.danger:hover:not(:disabled) {
   background: var(--pr-primary-soft);
   color: var(--pr-primary);
   font-weight: 700;
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   flex-shrink: 0;
   border: 1px solid #c7d7fe;
 }
 
 .step h3 {
   margin: 0 0 0.125rem;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 
 .step p {
   margin: 0;
   color: var(--pr-text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   line-height: 1.4;
 }
 
@@ -1113,7 +1119,7 @@ button.secondary.danger:hover:not(:disabled) {
 
 .cta-copy h2 {
   margin: 0 0 0.25rem;
-  font-size: 0.9375rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -1121,7 +1127,7 @@ button.secondary.danger:hover:not(:disabled) {
 .cta-copy p {
   margin: 0;
   color: var(--pr-text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .cta-card .hero-cta {
@@ -1136,7 +1142,7 @@ button.secondary.danger:hover:not(:disabled) {
   padding: 0.875rem 1.25rem;
   border-top: 1px solid var(--pr-border);
   color: var(--pr-text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   max-width: var(--landing-max-width);
   margin: 0 auto;
 }
