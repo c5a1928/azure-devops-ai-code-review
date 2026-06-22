@@ -1,15 +1,39 @@
 from __future__ import annotations
 
 import logging
+import secrets
 import tempfile
 import time
-from typing import Any
 
 from app.services.openai_chat import DEFAULT_MAX_RETRIES, ChatCompletionError
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_CURSOR_MODEL = "composer-2.5"
+_CURSOR_SDK_TOKEN_PATCHED = False
+
+
+def _patch_cursor_sdk_callback_tokens() -> None:
+    """Avoid bridge CLI failures when callback tokens start with '-'."""
+    global _CURSOR_SDK_TOKEN_PATCHED
+    if _CURSOR_SDK_TOKEN_PATCHED:
+        return
+    try:
+        import cursor_sdk._store_callback as store_callback
+        import cursor_sdk._tool_callback as tool_callback
+    except ImportError:
+        return
+
+    def _safe_auth_token() -> str:
+        token = secrets.token_urlsafe(32)
+        while token.startswith("-"):
+            token = secrets.token_urlsafe(32)
+        return token
+
+    tool_callback._new_auth_token = _safe_auth_token
+    store_callback._new_auth_token = _safe_auth_token
+    _CURSOR_SDK_TOKEN_PATCHED = True
+    logger.debug("Applied cursor-sdk callback token workaround")
 
 
 def _combine_messages(messages: list[dict[str, str]]) -> str:
@@ -28,6 +52,8 @@ def _is_retryable(exc: Exception) -> bool:
     if isinstance(retryable, bool):
         return retryable
     message = str(exc).lower()
+    if "tool-callback-auth-token" in message:
+        return True
     return "rate limit" in message or "429" in message or "too many requests" in message
 
 
@@ -46,6 +72,7 @@ def call_cursor_completion(
     max_retries: int = DEFAULT_MAX_RETRIES,
 ) -> str:
     try:
+        _patch_cursor_sdk_callback_tokens()
         from cursor_sdk import Agent, AgentOptions, LocalAgentOptions
     except ImportError as exc:
         raise ChatCompletionError(
@@ -98,6 +125,12 @@ def call_cursor_completion(
                 time.sleep(delay)
                 continue
             message = str(exc) or type(exc).__name__
+            if "tool-callback-auth-token" in message.lower():
+                message = (
+                    f"{message} "
+                    "(Known cursor-sdk bridge bug: retry the review; if it persists, "
+                    "upgrade cursor-sdk or contact support.)"
+                )
             raise ChatCompletionError(0, "cursor", message) from exc
 
     if last_error is not None:
